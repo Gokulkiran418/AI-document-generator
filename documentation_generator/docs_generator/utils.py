@@ -3,6 +3,7 @@ import ast
 import os
 import requests
 import base64
+import re
 from dotenv import load_dotenv
 from httpx import Client as HttpxClient
 
@@ -65,55 +66,68 @@ def get_file_content(repo_url, file_path):
         print(f"Error decoding file content: {e}")
         return None
 
-def generate_docstrings(code):
+def generate_docstrings(code, file_path="unknown"):
     """
     Generate Google-style docstrings for functions and classes in the provided code using OpenAI.
     Args:
         code (str): The Python code to process.
+        file_path (str): Path of the file being processed (for logging).
     Returns:
         str: Modified code with added docstrings or original code if an error occurs.
     """
     try:
+        # Validate syntax before processing
+        ast.parse(code)
+    except SyntaxError as e:
+        print(f"Skipping file {file_path} due to invalid syntax: {e}")
+        return code
+
+    try:
         # Estimate tokens (1 token ~ 4 chars)
-        max_chars = 8000  # Approx 2000 tokens to leave room for prompt and completion
+        max_chars = 8000  # Approx 2000 tokens
         if len(code) > max_chars:
-            print(f"Code too large ({len(code)} chars), chunking input.")
-            # Split code into chunks based on character count
+            print(f"Code too large ({len(code)} chars) in {file_path}, chunking input.")
+            # Split code at function/class boundaries
             chunks = []
             current_chunk = ""
-            for line in code.split('\n'):
-                if len(current_chunk) + len(line) + 1 <= max_chars:
+            lines = code.split('\n')
+            pattern = re.compile(r'^(def |class )')  # Match function/class definitions
+            for line in lines:
+                if len(current_chunk) + len(line) + 1 <= max_chars and not pattern.match(line):
                     current_chunk += line + '\n'
                 else:
-                    chunks.append(current_chunk)
+                    if current_chunk:
+                        chunks.append(current_chunk)
                     current_chunk = line + '\n'
             if current_chunk:
                 chunks.append(current_chunk)
             
             modified_chunks = []
-            for chunk in chunks:
+            for i, chunk in enumerate(chunks):
                 prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{chunk}"
-                # Check prompt size before sending
                 if len(prompt) > 10000:  # Approx 2500 tokens
-                    print(f"Skipping chunk due to excessive prompt size ({len(prompt)} chars).")
-                    modified_chunks.append(chunk)  # Keep original chunk
+                    print(f"Skipping chunk {i+1} in {file_path} due to excessive prompt size ({len(prompt)} chars).")
+                    modified_chunks.append(chunk)
                     continue
-                response = client.completions.create(
-                    model="gpt-3.5-turbo-instruct",
-                    prompt=prompt,
-                    temperature=0.2,
-                    max_tokens=2048,
-                    top_p=1.0,
-                    frequency_penalty=0.0,
-                    presence_penalty=0.0
-                )
-                modified_chunks.append(response.choices[0].text)
+                try:
+                    response = client.completions.create(
+                        model="gpt-3.5-turbo-instruct",
+                        prompt=prompt,
+                        temperature=0.2,
+                        max_tokens=2048,
+                        top_p=1.0,
+                        frequency_penalty=0.0,
+                        presence_penalty=0.0
+                    )
+                    modified_chunks.append(response.choices[0].text)
+                except openai.OpenAIError as e:
+                    print(f"OpenAI API error for chunk {i+1} in {file_path}: {e}")
+                    modified_chunks.append(chunk)
             return '\n'.join(modified_chunks)
         else:
             prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{code}"
-            # Check prompt size
             if len(prompt) > 10000:
-                print(f"Skipping file due to excessive prompt size ({len(prompt)} chars).")
+                print(f"Skipping file {file_path} due to excessive prompt size ({len(prompt)} chars).")
                 return code
             response = client.completions.create(
                 model="gpt-3.5-turbo-instruct",
@@ -126,17 +140,18 @@ def generate_docstrings(code):
             )
             return response.choices[0].text
     except openai.OpenAIError as e:
-        print(f"OpenAI API error: {e}")
+        print(f"OpenAI API error in {file_path}: {e}")
         return code
     except Exception as e:
-        print(f"Unexpected error generating docstrings: {e}")
+        print(f"Unexpected error generating docstrings in {file_path}: {e}")
         return code
 
-def extract_docstrings(modified_code):
+def extract_docstrings(modified_code, file_path="unknown"):
     """
     Extract docstrings from the modified code for functions and classes.
     Args:
         modified_code (str): Python code with added docstrings.
+        file_path (str): Path of the file being processed (for logging).
     Returns:
         dict: Dictionary mapping function/class names to their docstrings, or empty dict if error.
     """
@@ -151,10 +166,10 @@ def extract_docstrings(modified_code):
                     docstrings[name] = docstring
         return docstrings
     except SyntaxError as e:
-        print(f"Syntax error in code, skipping: {e}")
-        return {}  # Return empty dict to skip invalid files
+        print(f"Syntax error in file {file_path}, skipping: {e}")
+        return {}
     except Exception as e:
-        print(f"Unexpected error extracting docstrings: {e}")
+        print(f"Unexpected error extracting docstrings from {file_path}: {e}")
         return {}
     
 def generate_readme(repo_url, python_files):

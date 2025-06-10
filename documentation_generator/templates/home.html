@@ -15,7 +15,7 @@
             --hover: #1e40af;
         }
         body {
-            background: linear-gradient(300deg, rgb(7, 2, 81), rgb(92, 255, 211), rgb(55, 76, 239));
+            background: linear-gradient(300deg, #1e40af,#10b981,#2563eb);
             background-size: 180% 180%;
             animation: gradient-animation 3s ease infinite;
             font-family: 'Arial', sans-serif;
@@ -39,9 +39,12 @@
             max-width: 1000px; /* Slightly wider for cards */
         }
         h1 {
-            color: black;
-            text-align: center;
-            margin-bottom: 1.5rem;
+        color: black;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 2.75rem;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 700;
         }
         .form-control {
             border-color: var(--secondary);
@@ -106,7 +109,7 @@
 <body>
     <div class="container">
         <h1>AI-Powered Documentation Generator</h1>
-        <p class="text-center">Enter a GitHub repository URL to generate documentation for Python files.</p>
+        <p class="text-center">Enter a GitHub repository URL to generate documentation.</p>
         <form method="post" class="mt-4">
             {% csrf_token %}
             <div class="mb-3">
@@ -134,7 +137,6 @@
                     <div class="card-body">
                         <p>Try these public repositories to test the generator:</p>
                         <ul class="list-group list-group-flush">
-                            <li class="list-group-item"><a href="https://github.com/pallets/click" target="_blank">pallets/click</a></li>
                             <li class="list-group-item"><a href="https://github.com/navdeep-G/samplemod" target="_blank">navdeep-G/samplemod</a></li>
                             <li class="list-group-item"><a href="https://github.com/audreyr/cookiecutter-pypackage" target="_blank">audreyr/cookiecutter-pypackage</a></li>
                             <li class="list-group-item"><a href="https://github.com/kennethreitz/requests" target="_blank">kennethreitz/requests</a></li>
@@ -150,10 +152,10 @@
                     <div class="card-body">
                         <ul class="list-group list-group-flush">
                             <li class="list-group-item">Enter a public GitHub repository URL.</li>
-                            <li class="list-group-item">The app fetches Python files using the GitHub API.</li>
-                            <li class="list-group-item">OpenAI generates Google-style docstrings for functions and classes.</li>
+                            <li class="list-group-item">The app fetches files using the GitHub API.</li>
+                            <li class="list-group-item">OpenAI generates Google-style docstrings.</li>
                             <li class="list-group-item">A professional README is created for the repository.</li>
-                            <li class="list-group-item">View or download the results in a sleek interface.</li>
+                            <li class="list-group-item">View or download the results.</li>
                         </ul>
                     </div>
                 </div>

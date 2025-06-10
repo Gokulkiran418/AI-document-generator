@@ -16,12 +16,12 @@ def home(request):
         
         documentation = {}
         errors = []
-        for file_path in python_files[:5]:  # Limit to 5 files
+        for file_path in python_files[:5]:
             content = get_file_content(repo_url, file_path)
             if content:
                 try:
-                    modified_code = generate_docstrings(content)
-                    docstrings = extract_docstrings(modified_code)
+                    modified_code = generate_docstrings(content, file_path)  # Pass file_path
+                    docstrings = extract_docstrings(modified_code, file_path)  # Pass file_path
                     if docstrings:
                         documentation[file_path] = docstrings
                     else:
@@ -31,7 +31,6 @@ def home(request):
             else:
                 errors.append(f"Failed to fetch content for {file_path}.")
         
-        # Generate README
         readme_content = generate_readme(repo_url, python_files)
         
         if not documentation and not readme_content.startswith("Failed"):
