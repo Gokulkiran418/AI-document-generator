@@ -1,0 +1,30 @@
+# Django
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.sqlite3
+media/
+staticfiles/
+settings.py
+# Virtual Environment
+venv/
+env/
+
+# Environment Variables
+.env
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Logs and Cache
+*.log
+*.cache
