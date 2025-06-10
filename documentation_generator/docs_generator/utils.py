@@ -75,9 +75,9 @@ def generate_docstrings(code):
     """
     try:
         # Estimate tokens (1 token ~ 4 chars)
-        max_chars = 12000  # Approx 3000 tokens to leave room for prompt and completion (4097 total)
+        max_chars = 8000  # Approx 2000 tokens to leave room for prompt and completion
         if len(code) > max_chars:
-            print("Code too large, chunking input.")
+            print(f"Code too large ({len(code)} chars), chunking input.")
             # Split code into chunks based on character count
             chunks = []
             current_chunk = ""
@@ -93,6 +93,11 @@ def generate_docstrings(code):
             modified_chunks = []
             for chunk in chunks:
                 prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{chunk}"
+                # Check prompt size before sending
+                if len(prompt) > 10000:  # Approx 2500 tokens
+                    print(f"Skipping chunk due to excessive prompt size ({len(prompt)} chars).")
+                    modified_chunks.append(chunk)  # Keep original chunk
+                    continue
                 response = client.completions.create(
                     model="gpt-3.5-turbo-instruct",
                     prompt=prompt,
@@ -106,6 +111,10 @@ def generate_docstrings(code):
             return '\n'.join(modified_chunks)
         else:
             prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{code}"
+            # Check prompt size
+            if len(prompt) > 10000:
+                print(f"Skipping file due to excessive prompt size ({len(prompt)} chars).")
+                return code
             response = client.completions.create(
                 model="gpt-3.5-turbo-instruct",
                 prompt=prompt,
