@@ -74,17 +74,48 @@ def generate_docstrings(code):
         str: Modified code with added docstrings or original code if an error occurs.
     """
     try:
-        prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{code}"
-        response = client.completions.create(
-            model="gpt-3.5-turbo-instruct",
-            prompt=prompt,
-            temperature=0.2,
-            max_tokens=2048,
-            top_p=1.0,
-            frequency_penalty=0.0,
-            presence_penalty=0.0
-        )
-        return response.choices[0].text
+        # Estimate tokens (1 token ~ 4 chars)
+        max_chars = 12000  # Approx 3000 tokens to leave room for prompt and completion (4097 total)
+        if len(code) > max_chars:
+            print("Code too large, chunking input.")
+            # Split code into chunks based on character count
+            chunks = []
+            current_chunk = ""
+            for line in code.split('\n'):
+                if len(current_chunk) + len(line) + 1 <= max_chars:
+                    current_chunk += line + '\n'
+                else:
+                    chunks.append(current_chunk)
+                    current_chunk = line + '\n'
+            if current_chunk:
+                chunks.append(current_chunk)
+            
+            modified_chunks = []
+            for chunk in chunks:
+                prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{chunk}"
+                response = client.completions.create(
+                    model="gpt-3.5-turbo-instruct",
+                    prompt=prompt,
+                    temperature=0.2,
+                    max_tokens=2048,
+                    top_p=1.0,
+                    frequency_penalty=0.0,
+                    presence_penalty=0.0
+                )
+                modified_chunks.append(response.choices[0].text)
+            return '\n'.join(modified_chunks)
+        else:
+            prompt = f"Add Google-style docstrings to all functions and classes in this Python code that don't have them. Do not modify existing docstrings:\n\n{code}"
+            response = client.completions.create(
+                model="gpt-3.5-turbo-instruct",
+                prompt=prompt,
+                temperature=0.2,
+                max_tokens=2048,
+                top_p=1.0,
+                frequency_penalty=0.0,
+                presence_penalty=0.0
+            )
+            return response.choices[0].text
     except openai.OpenAIError as e:
         print(f"OpenAI API error: {e}")
         return code
@@ -98,7 +129,7 @@ def extract_docstrings(modified_code):
     Args:
         modified_code (str): Python code with added docstrings.
     Returns:
-        dict: Dictionary mapping function/class names to their docstrings.
+        dict: Dictionary mapping function/class names to their docstrings, or empty dict if error.
     """
     try:
         tree = ast.parse(modified_code)
@@ -111,5 +142,48 @@ def extract_docstrings(modified_code):
                     docstrings[name] = docstring
         return docstrings
     except SyntaxError as e:
-        print(f"Syntax error in code: {e}")
+        print(f"Syntax error in code, skipping: {e}")
+        return {}  # Return empty dict to skip invalid files
+    except Exception as e:
+        print(f"Unexpected error extracting docstrings: {e}")
         return {}
+    
+def generate_readme(repo_url, python_files):
+    """
+    Generate a README file for the repository based on its Python files.
+    Args:
+        repo_url (str): URL of the GitHub repository.
+        python_files (list): List of Python file paths in the repository.
+    Returns:
+        str: Generated README content or error message if generation fails.
+    """
+    try:
+        # Create a summary of the repository's structure
+        repo_summary = f"Repository: {repo_url}\nPython files found: {len(python_files)}\nSample files: {python_files[:3]}"
+        prompt = f"""
+        Generate a professional README file in Markdown format for a Python project based on the following information:
+        {repo_summary}
+        The README should include:
+        - Project title (derived from the repository name)
+        - Brief description of the project
+        - Installation instructions
+        - Usage examples
+        - Any other relevant sections (e.g., Contributing, License)
+        Ensure the content is clear, concise, and follows standard Markdown formatting.
+        """
+        response = client.completions.create(
+            model="gpt-3.5-turbo-instruct",
+            prompt=prompt,
+            temperature=0.3,
+            max_tokens=2048,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0
+        )
+        return response.choices[0].text
+    except openai.OpenAIError as e:
+        print(f"OpenAI API error generating README: {e}")
+        return "Failed to generate README due to API error."
+    except Exception as e:
+        print(f"Unexpected error generating README: {e}")
+        return "Failed to generate README due to an unexpected error."
