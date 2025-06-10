@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Documentation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: auto; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .readme { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generated Documentation for {{ repo_url }}</h1>
+        <a href="{% url 'home' %}">Back to Home</a>
+        {% if errors %}
+            <h2>Errors</h2>
+            <ul class="error">
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% for file_path, docstrings in documentation.items %}
+            <h2>{{ file_path }}</h2>
+            {% for name, docstring in docstrings.items %}
+                <h3>{{ name }}</h3>
+                <pre>{{ docstring }}</pre>
+            {% endfor %}
+        {% empty %}
+            <p>No documentation generated.</p>
+        {% endfor %}
+        <div class="readme">
+            <h2>Generated README</h2>
+            <pre>{{ readme }}</pre>
+        </div>
+    </div>
+</body>
+</html>
